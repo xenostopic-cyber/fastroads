@@ -306,10 +306,9 @@
         }
         setMany(e) {
           for (let t in e)
-            console.log("Setting ", t, e[t]), this.set(t, e[t], !0);
+            this.set(t, e[t], !0);
           for (let t in e)
-            console.log("Firing onchanged ", t, this.value[t]),
-              this.onChanged(t, this.value[t]);
+            this.onChanged(t, this.value[t]);
         }
         set(e, t, i = !1) {
           e in this.value &&
@@ -351,7 +350,6 @@
           let e, t;
           for (t in this.value)
             (e = JSON.parse(window.localStorage.getItem(x[t]) || v[t])),
-              console.log("GameConfig: Load ", t, e),
               this.set(t, e);
         }
       })(v);
@@ -794,7 +792,7 @@
       }
       var z = new Car();
       const k = 0.3,
-        S = window.localStorage.getItem("settings-camera-mode") || 0;
+        S = window.localStorage.getItem("config-camera-mode") || 0;
       var O =
         "\n\n  uniform sampler2D noiseMap;\n  uniform bool isNight;\n\n  attribute float variant;\n  // attribute vec3 groundNormal;\n  attribute float shadow;\n\n  #define SPRITE_NORMAL vec3(0.0, 1.0, 0.0);\n\n  varying vec2 vUvOffset;\n  varying float vShadow;\n  varying float vNoise;\n\n  varying float vLightGrass;\n  varying float vDarkGrass;\n  #ifdef TREES\n    uniform bool highDef;\n  #endif\n\n";
       var L =
@@ -961,16 +959,10 @@
           { medRes: 12, nearRes: 24 },
           { medRes: 14, nearRes: 28 },
         ],
-        storedViewLodIndex = isNaN(
-          parseInt(window.localStorage.getItem("config-view-lod-index"))
-        )
-          ? 2
-          : parseInt(window.localStorage.getItem("config-view-lod-index"));
-      let U = isNaN(
-          parseInt(window.localStorage.getItem("config-detail-lod-index"))
-        )
-          ? 1
-          : parseInt(window.localStorage.getItem("config-detail-lod-index")),
+        _rawViewLod = parseInt(window.localStorage.getItem("config-view-lod-index")),
+        storedViewLodIndex = isNaN(_rawViewLod) ? 2 : _rawViewLod;
+      let _rawDetailLod = parseInt(window.localStorage.getItem("config-detail-lod-index")),
+        U = isNaN(_rawDetailLod) ? 1 : _rawDetailLod,
         renderLevel = renderLevels[storedViewLodIndex],
         X = Q[U];
       const setRenderLevel = (viewLodIndex) => {
@@ -1108,13 +1100,12 @@
         Fe = window.location.search.substring(1).split("&"),
         storedSeed = localStorage.getItem("seed");
       if (storedSeed) {
-        console.log("Restoring seed from local storage"), (seed = storedSeed);
+        seed = storedSeed;
         let e = localStorage.getItem("config-scene-topography") || "normal",
           t = seed + "?" + e,
           i = 0;
         try {
-          (i = JSON.parse(localStorage.getItem(t)) || 0),
-            console.log("Restoring saved progress to node ", i);
+          i = JSON.parse(localStorage.getItem(t)) || 0;
         } catch (Tc) {
           console.warn("Could not load saved progress for seed ", seed);
         }
@@ -1124,13 +1115,12 @@
         for (let Pc of Fe) {
           let e = Pc.split("=");
           if ("seed" == e[0])
-            console.log("Overriding seed with querystring"), (seed = e[1]);
+            seed = e[1];
           else if ("node" == e[0]) {
-            console.log("Overriding start node with querystring");
             try {
               We = JSON.parse(e[1]);
             } catch (Tc) {
-              console.error("Invalid start node param");
+              console.warn("Invalid start node param in URL");
             }
           }
         }
@@ -1151,13 +1141,12 @@
             (console.warn("Invalid seed ", t), !0)
           );
         };
-      (seed = seed.toString()), console.log("SEED: ", seed);
+      seed = seed.toString();
       if (((storedSeed = localStorage.getItem("start-node")), storedSeed)) {
-        console.log("Restoring starting node as ", storedSeed);
         try {
           We = JSON.parse(storedSeed);
         } catch (Tc) {
-          console.warn("Failed to retrieve intial node from ls");
+          console.warn("Failed to retrieve initial node from localStorage");
         }
       }
       localStorage.removeItem("start-node");
@@ -1312,17 +1301,7 @@
               a && console.log(Xe.t1, Xe.t2),
               void 0 === Xe.na || void 0 === Xe.pa)
             )
-              console.log("UNDEFINED looking up ", e, t),
-                console.log(i),
-                console.log(i.ps),
-                console.log(
-                  null === (r = i.ps) || void 0 === r ? void 0 : r.length
-                ),
-                console.log(i.ns),
-                console.log(
-                  null === (o = i.ns) || void 0 === o ? void 0 : o.length
-                ),
-                console.log(Xe.t1, Xe.t2);
+              console.error("UNDEFINED node lookup at (" + e + ", " + t + ") t1=" + Xe.t1 + " t2=" + Xe.t2 + " ps.length=" + (i.ps ? i.ps.length : "N/A"));
             return (
               (Xe.side = Xe.na.x * (t - Xe.pa.z) - Xe.na.z * (e - Xe.pa.x)),
               Xe.side < 0 && Xe.t2 < i.ps.length - 2
@@ -1388,7 +1367,7 @@
         $e = {};
       class et {
         static initialise(e) {
-          console.log("Loading near grid cell..."), e();
+          e();
         }
         constructor(e, t, i, s = !1) {
           (this.retired = !1),
@@ -2107,7 +2086,7 @@
         }
         sanitiseConfig(e) {
           this.skinList.includes(e.value.skin) ||
-            (console.log(
+            (console.warn(
               "Scene config not compatible; reverting to default skin"
             ),
             e.set("skin", "default", !0),
@@ -9491,7 +9470,7 @@
         }
         sanitiseConfig(e) {
           this.skinList.includes(e.value.skin) ||
-            (console.log(
+            (console.warn(
               "Scene config not compatible; reverting to default skin"
             ),
             e.set("skin", "default", !0)),
@@ -12020,20 +11999,16 @@
               if ("node" == e[0])
                 try {
                   let t = parseInt(e[1]);
-                  isNaN(t) ||
-                    ((this.initialNode = t),
-                    console.log("Overwriting initial node from QS: ", e[1]));
+                  isNaN(t) || (this.initialNode = t);
                 } catch (Tc) {
-                  console.error("Failed to load initial node from QS:", e[1]);
+                  console.warn("Failed to load initial node from QS:", e[1]);
                 }
               else
                 "topo" == e[0] &&
-                  (this.set("topography", e[1], !0),
-                  console.log("Overwriting topography from QS: ", e[1]));
+                  this.set("topography", e[1], !0);
             }
           }
           resetMemory() {
-            console.log("Resetting config to defaults");
             for (let e in this.value) window.localStorage.setItem(or[e], lr[e]);
           }
           buildSceneMeta() {
@@ -12072,7 +12047,7 @@
               )
                 e in ar ||
                   (console.warn(
-                    "Loaded unrecognsied scene name " +
+                    "Loaded unrecognised scene name " +
                       e +
                       ", restoring default"
                   ),
@@ -12082,8 +12057,7 @@
                 try {
                   e = JSON.parse(e);
                 } catch (Tc) {}
-              console.log("SceneConfig: Load ", t, e),
-                this.set(t, e, !0),
+              this.set(t, e, !0),
                 (this.initialValue[t] = e);
             }
           }
@@ -12116,23 +12090,11 @@
                 (e = parseInt(localStorage.getItem("restore-progress"))),
                   e > 0 &&
                     ((this.accumulatedProgress += e),
-                    localStorage.setItem(i, this.accumulatedProgress),
-                    console.log(
-                      "Storing accumulated progress ",
-                      e,
-                      this.accumulatedProgress
-                    ));
+                    localStorage.setItem(i, this.accumulatedProgress));
               } catch (Tc) {}
               localStorage.removeItem("restore-progress");
             }
-            console.log(
-              "Loaded node and progress " +
-                this.initialNode +
-                ", " +
-                this.accumulatedProgress +
-                " for confKey " +
-                e
-            );
+
           }
           convertLegacyProgress() {
             try {
@@ -12147,12 +12109,7 @@
                   for (i of ((e = t.toString()), n))
                     (s = e + "?" + i),
                       localStorage.getItem(s) &&
-                        (console.log(
-                          "Converting legacy progress for seed ",
-                          e,
-                          i
-                        ),
-                        localStorage.setItem(
+                        (localStorage.setItem(
                           e + "_Hills_" + i + "_node",
                           localStorage.getItem(s)
                         ),
@@ -12584,7 +12541,6 @@
               window.localStorage.getItem(Mr[t]) || defaultVehicleSettings[t]),
               isNaN(parseInt(e)) || (e = parseInt(e)),
               (this[t] = e),
-              console.log("VehicleConfig: Load ", t, e),
               this.set(t, e);
         }
       })();
@@ -12693,44 +12649,45 @@
         }
         checkLocation(e) {
           var t = new XMLHttpRequest();
+          var _fallback = function() { e({ country: "unknown", city: "unknown", region: "unknown" }); };
           t.open("GET", "https://ipapi.co/json"),
             t.setRequestHeader("Content-Type", "application/json"),
             (t.timeout = 3e3),
             t.send(null),
+            (t.ontimeout = _fallback),
+            (t.onerror = _fallback),
             (t.onreadystatechange = function () {
-              if (4 === t.readyState && 200 === t.status)
-                try {
-                  var i = JSON.parse(t.response);
-                  console.log("Analytics: Got location of ", i.country_name),
+              if (4 === t.readyState)
+                if (200 === t.status)
+                  try {
+                    var i = JSON.parse(t.response);
                     e({ country: i.country, city: i.city, region: i.region });
-                } catch (Tc) {
-                  e({ country: "unknown", city: "unknown", region: "unknown" });
-                }
+                  } catch (Tc) {
+                    _fallback();
+                  }
+                else
+                  _fallback();
             });
         }
         initialiseConnection() {
           if (window.localStorage.getItem("analytics-disabled"))
             return (
-              console.log("Analytics: Disabled; will not connect"),
               window.localStorage.removeItem("unsent-feedback"),
               void (this.socket = { emit: () => {} })
             );
           this.connected ||
-            (console.log("Analytics: Initialising socket"),
-            (this.socket = Object(Ue.a)("https://34.250.221.219:443", {
+            ((this.socket = Object(Ue.a)("https://34.250.221.219:443", {
               reconnection: !1,
-              rejectUnauthorized: !1,
+              rejectUnauthorized: !0,
             })),
             this.socket.on("connect", () => {
-              console.log("Analytics: Connected"),
-                (this.connected = !0),
+              (this.connected = !0),
                 this.doInitialiseAnalytics && this.initialiseAnalytics(),
                 g() && this.sendUpdate("mobile", !0);
             }),
             this.socket.on("pre_initialise", (e) => {
               if (
-                (console.log("Got cumulative meters as ", e.cumulativeMeters),
-                Pr.set(e.cumulativeMeters),
+                (Pr.set(e.cumulativeMeters),
                 0 == w.Units)
               ) {
                 let t = Math.floor((e.cumulativeMeters / 1e3) * 0.621371),
@@ -12763,13 +12720,12 @@
                     ? 1
                     : -1;
                 })(e.latestVersion, Ui) > 0 &&
-                (console.log("! Version out of date - prompting refresh"),
+                (console.warn("Version out of date - prompting refresh"),
                 (document.getElementById("update-alert").style.display =
                   "block"));
             }),
             this.socket.on("connect_error", (e) => {
-              console.error("Analytics: Connection failed"),
-                console.error(e),
+              console.warn("Analytics: Connection failed - " + e),
                 (this.connected = !1);
             }),
             Tr.set(this.socket));
@@ -12900,9 +12856,7 @@
             (i = JSON.parse(window.localStorage.getItem(e))),
               "function" === typeof t && (i = t(i));
           } catch (Tc) {
-            console.warn("Could not parse analytics item ", e),
-              console.log(window.localStorage.getItem(e)),
-              console.log(Tc),
+            console.warn("Could not parse analytics item " + e + ": " + Tc),
               window.localStorage.removeItem(e);
           }
           return i;
@@ -13703,24 +13657,7 @@
               (i.o = this.originOverflow * ro.originSide),
             (Ke.tail.next = i),
             isNaN(ro.x)
-              ? (console.log("NAN x AT INDEX " + i.i),
-                console.log("bT ", ho.bT),
-                console.log("bDir ", ho.bDir),
-                console.log("E.originDot ", ro.originDot),
-                console.log("originAdjust ", ro.originAdjust),
-                console.log("OriginRedirect ", ro.originRedirect),
-                console.log("OriginSide ", ro.originSide),
-                console.log("originAng ", ro.originAng),
-                console.log("Origindir ", this.originDir),
-                console.log("Min max ", ho.minT, ho.maxT),
-                console.log("Gradlat, lon ", ho.gradLat, ho.gradLon),
-                console.log("gradAVg ", ho.gradAvg),
-                console.log("antiWeight ", this.antiWeight),
-                console.log("feelL, feelR ", ho.feelL, ho.feelR),
-                console.log("feelAvg ", ho.feelAvg),
-                console.log("feelDif ", ho.feelDif),
-                console.log("waterFactor ", this.waterFactor),
-                console.log("maxDif ", ho.maxDif),
+              ? (console.error("NaN x in road node at index " + i.i + " (bad seed or terrain data)"),
                 !1)
               : (eo && this.drawPoints(Ke.tail),
                 (Ke.tail = i),
@@ -14756,14 +14693,12 @@
         handleMidlineReset() {
           if (this.checkIndex > Ke.tail.i)
             throw (
-              (console.error("Midline reset will affect fargrid lookahead"),
-              (this.checkNode = Ke.vehicleNode),
+              ((this.checkNode = Ke.vehicleNode),
               (this.checkIndex = Ke.vehicleIndex),
-              new Error("Midline stuck at node " + Ke.tail.i))
+              new Error("Midline stuck at node " + Ke.tail.i + " (fargrid lookahead affected)"))
             );
           if (this.overlapCheckNode.i >= Ke.tail.i) {
-            console.error("MIDLINE RESET UNDOES OVERLAP CHECK NODE"),
-              console.log(Ke.tail.i, this.overlapCheckNode.i);
+            console.warn("MIDLINE RESET: overlapCheckNode (" + this.overlapCheckNode.i + ") >= tail (" + Ke.tail.i + ") - undoing overlap check node");
             let e = Object.keys(bo);
             for (let t of e) {
               let e = Object.keys(bo[t]);
@@ -14907,7 +14842,7 @@
                   this.stagingCells.push(this.loadedCells[yo.ocx][yo.ocz]);
                 else {
                   let e = this.loadedCells[yo.ocx][yo.ocz];
-                  console.log(
+                  c && console.log(
                     e.genRow,
                     e.overlapIndex,
                     e.treeGenIndex,
@@ -14915,7 +14850,7 @@
                   );
                 }
               else
-                console.log(
+                c && console.log(
                   null === (s = this.loadedCells[yo.ocx]) ||
                     void 0 === s ||
                     null === (a = s[yo.ocz]) ||
@@ -15307,12 +15242,11 @@
             (this.loadProg = 0),
             (this.loadTime = Date.now()),
             window.localStorage.getItem("seed_failed") &&
-              (console.log("BAD SEED"),
+              (console.warn("Bad seed detected - clearing flag"),
               window.localStorage.removeItem("seed_failed")),
             (this.checkPerformance = !1),
             window.localStorage.getItem("analytics_returningPlayer") ||
-              (console.log("Env: Analysing performance for dynamic config"),
-              (this.checkPerformance = !0)),
+              (this.checkPerformance = !0),
             this.initScene(ar[dr.value.sceneName]);
         }
         _topographyReset() {
@@ -15324,11 +15258,7 @@
         }
         _sceneReset() {}
         _sceneLoaderInit() {
-          console.log(
-            " - Topography initialised in",
-            Date.now() - this.loadTime
-          ),
-            (Jr.midlineLoadTime = Date.now() - this.loadTime),
+          (Jr.midlineLoadTime = Date.now() - this.loadTime),
             Jr.playerProfile &&
               (Jr.playerProfile.midlineLoadTime = Jr.midlineLoadTime);
         }
@@ -15379,8 +15309,7 @@
           this.nearGrid.reset(this.heightmap);
         }
         _nearGridLoaderInit() {
-          console.log(" - Far grid initialised in", Date.now() - this.loadTime),
-            this.nearGrid &&
+          this.nearGrid &&
               (this.nearGrid.destroy(),
               this.envLayer.remove(this.nearGrid.container),
               delete this.nearGrid),
@@ -15395,11 +15324,7 @@
           return (
             (this.loadProg = this.nearGrid.loader()),
             1 == this.loadProg &&
-              (console.log(
-                " - Both grids initialised in",
-                Date.now() - this.loadTime
-              ),
-              (Jr.envLoadTime = Date.now() - this.loadTime),
+              ((Jr.envLoadTime = Date.now() - this.loadTime),
               Jr.playerProfile &&
                 (Jr.playerProfile.envLoadTime = Jr.envLoadTime),
               Jr.sendUpdate("loadTimes", {
@@ -15420,7 +15345,7 @@
                 ? (this.midlineAttempts++,
                   this.midlineAttempts >= 25 ||
                   (0 == dr.initialNode && this.midlineAttempts >= 4)
-                    ? (console.log("Too many failed - reloading"),
+                    ? (console.warn("Midline: too many failed attempts - reloading scene"),
                       void Qe(Date.now(), !0))
                     : (this.getOriginPose(this.midlineAttempts),
                       this.vehicleOrigin.x + this.vehicleOrigin.z > 1e6
@@ -15633,7 +15558,7 @@
             try {
               this.modeIndex = JSON.parse(window.localStorage.getItem(jo));
             } catch {
-              console.log("Camera: Failed to load mode from memory");
+              console.warn("Camera: Failed to load mode from localStorage");
             }
           this.initVehicleAngles(!0);
         }
@@ -15903,7 +15828,7 @@
                 this.camContainer.position.z,
                 e
               );
-            console.log("Near node is " + t.n.i + " at dist " + t.d),
+            c && console.log("Near node is " + t.n.i + " at dist " + t.d),
               this.debug.position.copy(t.n.p),
               (input.key[keyMap.NodeDebug] = !1);
           }
@@ -16223,7 +16148,7 @@
         }
         onPartialLeaderboard(e) {}
         onNewRecord(e) {
-          console.log("Got a new record!");
+          console.warn("Got a new record!");
         }
         submitRecord(e, t, i, s, a = "Anonymous") {
           Tr.value &&
@@ -16757,8 +16682,7 @@
         }
         onTopographyChanged() {
           "Planet" == dr.value.sceneName
-            ? (console.log("Loading planet"),
-              (this.bendyFactor = bl[dr.value.topography]))
+            ? ((this.bendyFactor = bl[dr.value.topography]))
             : (this.bendyFactor = wl[dr.value.topography]);
         }
         initialise() {
@@ -18615,8 +18539,7 @@
           return JSON.parse(this.ls.getItem("config-" + e));
         }
         set(e, t) {
-          console.log("Set config '" + e + "' to " + t),
-            (Pl[e] = t),
+          (Pl[e] = t),
             window.localStorage.setItem("config-" + e, t);
         }
       })();
@@ -18762,7 +18685,7 @@
               game.addStateListener(this.onTickerStateBound),
               input.init(t),
               input.addListener(keyMap.NodeDebug, () =>
-                console.log(Ke.vehicleNode)
+                c && console.log(Ke.vehicleNode)
               ),
               input.addListener(keyMap.Mute, () => {
                 c &&
@@ -18936,11 +18859,9 @@
                 let e = this.loadStages.shift();
                 if (
                   ((this.loadProgress += e.portion),
-                  console.log("Loaded " + e.name + "..."),
                   0 == this.loadStages.length)
                 )
                   return (
-                    console.log("Loading complete"),
                     game.removeListener(this.loadLoopBound),
                     void this.onLoaded()
                   );
@@ -19040,10 +18961,8 @@
               stencil: !1,
               logarithmicDepthBuffer: t,
             })),
-              console.log("Device pixel ratio: ", window.devicePixelRatio),
               this.renderer.setPixelRatio(Math.min(1, window.devicePixelRatio)),
               this.renderer.setClearColor(16777215, 1),
-              console.log("Antialias, logdepth ", e, t),
               (this.renderer.shadowMap.enabled = !0);
           }
           initScene(e) {
@@ -19057,7 +18976,6 @@
                 stencil: !1,
                 logarithmicDepthBuffer: !1,
               })),
-              console.log("Device pixel ratio: ", window.devicePixelRatio),
               this.renderer.setPixelRatio(Math.min(1, window.devicePixelRatio)),
               this.renderer.setClearColor(16777215, 1),
               (this.renderer.shadowMap.enabled = !0),
@@ -19126,8 +19044,7 @@
               this.scene.children.length;
 
             )
-              console.log("Removing scene children"),
-                this.scene.remove(this.scene.children[0]);
+              this.scene.remove(this.scene.children[0]);
             for (; this.canvas.lastChild; )
               this.canvas.removeChild(this.canvas.lastChild);
             this.renderer.clear();
@@ -21941,7 +21858,6 @@
               ) {
                 if (A) return;
                 (i.current = new Zl(t.current, e.current, c, l)),
-                  console.log("Making new sceneController and beginning"),
                   i.current.beginGame();
               }
               return () => {
