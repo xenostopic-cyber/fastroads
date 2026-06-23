@@ -392,11 +392,12 @@
               (window.onfocus = () => {
                 this.wasPaused || this.resume();
               }),
-              document.addEventListener("visibilitychange", (e) => {
+              (this._onVisibilityChange = () => {
                 "visible" == document.visibilityState
                   ? ((this.blurred = !1), this.updateBlurListeners())
                   : ((this.blurred = !0), this.updateBlurListeners());
               }),
+              document.addEventListener("visibilitychange", this._onVisibilityChange),
               A ||
                 b ||
                 (this.tick(),
@@ -893,6 +894,7 @@
             nearFwdHorizon: 15,
             wallGenHorizon: 65,
             wallRenderHorizon: 20,
+            treeRenderHorizon: 15,
           },
           // med
           {
@@ -905,6 +907,7 @@
             nearFwdHorizon: 25,
             wallGenHorizon: 80,
             wallRenderHorizon: 35,
+            treeRenderHorizon: 20,
           },
           // high
           {
@@ -917,6 +920,7 @@
             nearFwdHorizon: 30,
             wallGenHorizon: 95,
             wallRenderHorizon: 50,
+            treeRenderHorizon: 25,
           },
           // ultra
           {
@@ -929,6 +933,7 @@
             nearFwdHorizon: 40,
             wallGenHorizon: 115,
             wallRenderHorizon: 70,
+            treeRenderHorizon: 30,
           },
           // ultra+
           {
@@ -941,6 +946,7 @@
             nearFwdHorizon: 40,
             wallGenHorizon: 115,
             wallRenderHorizon: 70,
+            treeRenderHorizon: 30,
           },
           // ?
           {
@@ -950,6 +956,7 @@
             nearFwdHorizon: 10,
             wallGenHorizon: 40,
             wallRenderHorizon: 20,
+            treeRenderHorizon: 10,
           },
         ],
         Q = [
@@ -1055,8 +1062,7 @@
         Oe = new r.F({ map: null, alphaTest: 0.75 });
       let wallGenHorizon = renderLevel.wallGenHorizon,
         wallRenderHorizon = renderLevel.wallRenderHorizon;
-      const Te = 30;
-      renderLevel.treeRenderHorizon;
+      const Te = renderLevel.treeRenderHorizon || 30;
       const Pe = new r.C({ depthTest: !1, fog: !0, map: F(null, 2) });
       (Pe.userData.nearCol = { value: new r.i(0) }),
         (Pe.userData.farCol = { value: new r.i(65535) }),
@@ -3363,13 +3369,13 @@
             Pi(t);
         },
         vi = new r.F({ map: F(ut, 0), displacementMap: F(pi, 4) }),
-        wi = [700, 2e3, 3500, 6e3];
+        wi = [700, 2e3, 3500, 6e3, 6e3];
       let bi = 3500;
-      const fi = [200, 400, 600, 800];
+      const fi = [200, 400, 600, 800, 800];
       let yi = 400;
-      const Ii = [20, 50, 100, 150];
+      const Ii = [20, 50, 100, 150, 150];
       let Di = 100;
-      const Mi = [15, 20, 25, 30];
+      const Mi = [15, 20, 25, 30, 30];
       let Ni = 10;
       const ji = F(ui),
         Ci = [
@@ -15752,9 +15758,9 @@
             this.camera.position.set(0, 0, 0),
             (this.canvas = t),
             (this.canvas.requestPointerLock =
-              t.requestPointerLock || t.mozRequestPointerLock),
+              t.requestPointerLock || t.mozRequestPointerLock || null),
             (this.canvas.onclick = () => {
-              this.canvas.requestPointerLock();
+              this.canvas.requestPointerLock && this.canvas.requestPointerLock();
             }),
             document.addEventListener(
               "pointerlockchange",
@@ -21861,7 +21867,10 @@
                   i.current.beginGame();
               }
               return () => {
-                i.current;
+                game.retire();
+                window.onblur = null;
+                window.onfocus = null;
+                window.onbeforeunload = null;
               };
             }, [g]);
           const w = o < 1;
