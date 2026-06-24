@@ -149,7 +149,7 @@
             this.dom.addEventListener("mousedown", this.onMouseDownBound, !1),
             this.dom.addEventListener("mouseup", this.onMouseUpBound, !1),
             this.dom.addEventListener("mousemove", this.onMouseMoveBound, !1),
-            this.dom.addEventListener("wheel", this.onScrollBound, !1),
+            this.dom.addEventListener("wheel", this.onScrollBound, { passive: !0 }),
             this.dom.addEventListener("keydown", this.onKeyDownBound, !1),
             this.dom.addEventListener("keyup", this.onKeyUpBound, !1);
         }
@@ -229,7 +229,7 @@
         unlockKeys() {
           this.keysLocked &&
             ((this.keysLocked = !1),
-            this.setMouseEnabled(!0),
+            this.setMouseEnabled(this.mouseWasEnabled),
             (this.onKeyDown = this.onKeyDownUnlocked),
             (this.onKeyUp = this.onKeyUpUnlocked));
         }
@@ -12874,9 +12874,8 @@
               : window.localStorage.setItem(e, JSON.stringify(t)));
         }
         checkBrowser() {
-          return -1 !=
-            (navigator.userAgent.indexOf("Opera") ||
-              navigator.userAgent.indexOf("OPR"))
+          return -1 != navigator.userAgent.indexOf("Opera") ||
+            -1 != navigator.userAgent.indexOf("OPR")
             ? "Opera"
             : -1 != navigator.userAgent.indexOf("Edg")
             ? "Edge"
@@ -15352,10 +15351,12 @@
                   this.midlineAttempts >= 25 ||
                   (0 == dr.initialNode && this.midlineAttempts >= 4)
                     ? (console.warn("Midline: too many failed attempts - reloading scene"),
+                      window.localStorage.setItem("seed_failed", seed),
                       void Qe(Date.now(), !0))
                     : (this.getOriginPose(this.midlineAttempts),
                       this.vehicleOrigin.x + this.vehicleOrigin.z > 1e6
-                        ? void Qe(Date.now(), !0)
+                        ? (window.localStorage.setItem("seed_failed", seed),
+                           void Qe(Date.now(), !0))
                         : (this.midline.initialise(
                             seed,
                             this.heightmap,
@@ -15785,6 +15786,19 @@
                 !1
               );
         }
+        destroy() {
+          document.removeEventListener(
+            "pointerlockchange",
+            this.lockChangeAlertBound,
+            !1
+          );
+          document.removeEventListener(
+            "mousemove",
+            this.onMouseMoveBound,
+            !1
+          );
+          if (this.canvas) this.canvas.onclick = null;
+        }
         onMouseMove(e) {
           (this.targetRotY -= (e.movementX * this.mouseSense) / this.curZoom),
             (this.targetRotX +=
@@ -16207,7 +16221,7 @@
           );
         }
         updateFastestMile(e) {
-          (Wo.live.value += (1e3 * e) / 1e3),
+          (Wo.live.value += e),
             this.seenIndex !== Ke.vehicleIndex &&
               ((Wo.live.progress =
                 (Ke.vehicleIndex - Wo.liveInterval.startNode) / 160),
@@ -18890,7 +18904,7 @@
                       "LOAD ERROR: Stuck at progress ",
                       this.loadProgress
                     ),
-                    !kr.NewPlayer)
+                    !kr.newUser)
                   )
                     return (
                       this.onError(
