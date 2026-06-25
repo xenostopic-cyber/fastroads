@@ -12829,9 +12829,10 @@
           if (this.connected) this.sendUpdate(Br, e);
           else {
             let t = [];
-            if (window.localStorage.getItem("unsent-feedback"))
+            let _raw = window.localStorage.getItem("unsent-feedback");
+            if (_raw)
               try {
-                t = JSON.parse(window.localStorage.getItem("unsent-feedback"));
+                t = JSON.parse(_raw);
               } catch (Tc) {
                 t = [];
               }
@@ -12840,10 +12841,11 @@
           }
         }
         sendCachedFeedback() {
-          let e = [];
-          if (window.localStorage.getItem("unsent-feedback"))
+          let e = [],
+            _raw = window.localStorage.getItem("unsent-feedback");
+          if (_raw)
             try {
-              e = JSON.parse(window.localStorage.getItem("unsent-feedback"));
+              e = JSON.parse(_raw);
               for (let t of e) this.sendUpdate(Br, t);
             } catch (Tc) {
               console.error(
@@ -15213,8 +15215,9 @@
           if ((i--, i >= 0)) dr.set("weatherIndex", i);
           else {
             let e = s.skins.indexOf(t) - 1;
-            e < 0 && (e = s.skins.length - 1),
-              dr.set("weatherIndex", a.length - 1),
+            e < 0 && (e = s.skins.length - 1);
+            let n = s.skinWeathers[s.skins[e]];
+            dr.set("weatherIndex", n.length - 1),
               dr.set("skin", s.skins[e]);
           }
         }
@@ -16155,7 +16158,7 @@
         onDisplay(e) {
           e
             ? (this.resetFastestMile(), game.addSlowListener(this.updateBound))
-            : game.addSlowListener(this.updateBound);
+            : game.removeSlowListener(this.updateBound);
         }
         onSocket(e) {
           e.on("leaderboard", this.onNewLeaderboard.bind(this)),
