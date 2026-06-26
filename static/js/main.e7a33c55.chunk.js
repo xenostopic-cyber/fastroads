@@ -354,6 +354,23 @@
         }
       })(v);
       const b = window.location.pathname.includes("dash");
+      /**
+       * Game — central ticker and lifecycle manager.
+       *
+       * Responsibilities:
+       *  - Drives the high-frequency RAF loop (tick / updateListeners).
+       *  - Drives the low-frequency 20 ms interval (tick30 / updateSlowListeners).
+       *  - Owns pause / resume / retire state including blur-triggered auto-pause.
+       *  - Notifies registered listeners on each tick with (dT, appTime).
+       *  - Exposes addBlurListener / removeBlurListener for components that need to
+       *    know when the browser tab becomes hidden.
+       *
+       * State flags:
+       *  - paused:      RAF is stopped; slow timer is stopped.
+       *  - wasPaused:   user explicitly paused (prevents onfocus auto-resume).
+       *  - blurred:     document.visibilityState is "hidden".
+       *  - playLocked:  prevents resume() unless called with force=true.
+       */
       var game = new (class {
           constructor() {
             (this.appTime = 0),
@@ -532,6 +549,22 @@
           vol: 0.5,
         },
       };
+      /**
+       * AudioManager — wraps Three.js AudioListener and all game sound effects.
+       *
+       * Lifecycle:
+       *  - init(dom): must be called on first user gesture to unlock the Web Audio
+       *    context (browser autoplay policy). Attaches event listeners and begins
+       *    the rolling ambience track.
+       *  - onTickerState(paused): fades audio out when the game pauses or the tab
+       *    is blurred; fades back in on resume.
+       *  - toggleMute(): persists mute state via GameConfig (w.AudioLevel).
+       *
+       * Fade system:
+       *  The fade-in/out is frame-driven (addListener on game tick) rather than
+       *  using Web Audio's setValueAtTime, so it stays in sync with playTime and
+       *  respects playSpeed in dev-mode step-tick scenarios.
+       */
       var audio = new (class {
         constructor() {
           (this.loader = new r.d()),
@@ -16023,12 +16056,44 @@
           return e;
         },
         Zo = Bo();
+      /** Tracks the rolling best time over any 160-node (≈1 mile) interval. */
       var Wo = new (class extends m {})({
         ...Zo,
         key: "fastestMile",
         seconds: -1,
         live: { value: -1, progress: 0, prev: 0 },
         liveInterval: { startTime: 0, startNode: 0, endNode: 160 },
+      });
+      /**
+       * Tracks the fastest time to drive the first 800 nodes (≈5 miles) from
+       * the start of each session. Once the player passes node 800 it freezes.
+       */
+      var _firstFiveState = new (class extends m {})({
+        ...Zo,
+        key: "fastestFirstFive",
+        seconds: -1,
+        live: { value: 0, progress: 0, active: true },
+        endNode: 800,
+      });
+      /**
+       * Tracks the furthest continuous on-road drive. Resets every time the
+       * vehicle leaves the road surface (z.onRoad becomes false).
+       */
+      var _furthestJourneyState = new (class extends m {})({
+        ...Zo,
+        key: "furthestJourney",
+        meters: -1,
+        live: { startNode: 0, currentMeters: 0, onRoad: true },
+      });
+      /**
+       * Tracks cumulative on-road metres driven in the current session.
+       * Unlike furthestJourney this is additive — it never resets on off-road.
+       */
+      var _furthestOnRoadState = new (class extends m {})({
+        ...Zo,
+        key: "furthestOnRoad",
+        meters: -1,
+        live: { totalMeters: 0 },
       });
       const Fo = [
         {
@@ -16042,13 +16107,23 @@
           key: "fastestFirstFive",
           label: "Fastest First Five Miles",
           unit: "seconds",
+          state: _firstFiveState,
+          stateKey: "seconds",
         },
         {
           key: "furthestJourney",
           label: "Furthest Single Journey",
           unit: "meters",
+          state: _furthestJourneyState,
+          stateKey: "meters",
         },
-        { key: "furthestOnRoad", label: "Furthest On-Road", unit: "meters" },
+        {
+          key: "furthestOnRoad",
+          label: "Furthest On-Road",
+          unit: "meters",
+          state: _furthestOnRoadState,
+          stateKey: "meters",
+        },
       ];
       var Ho = new (class extends m {
         constructor(e) {
@@ -16083,7 +16158,40 @@
         onVehicleChanged(e) {
           this.updateView();
         }
-        listenRecords() {}
+        listenRecords() {
+          /**
+           * If the analytics socket is already connected, subscribe immediately.
+           * Otherwise wait for Tr (socket ref) to emit a value and subscribe then.
+           * This matches the pattern used by Yo.onSocket() for leaderboard updates.
+           */
+          const _subscribe = (socket) => {
+            if (!socket) return;
+            /** Server pushed a full personal-records update for this player. */
+            socket.on("personalRecords", (data) => {
+              if (!data) return;
+              for (let item of Fo) {
+                if (item.state && data[item.key] !== undefined) {
+                  item.state.set("personal", data[item.key]);
+                  Ho.storeRecords(item.key, data[item.key]);
+                }
+              }
+            });
+            /** Server confirmed a new all-time or daily record for this player. */
+            socket.on("recordConfirmed", (data) => {
+              if (!data || !data.key) return;
+              let item = Fo.find((f) => f.key === data.key);
+              if (item && item.state) {
+                if (data.personal !== undefined) {
+                  item.state.set("personal", data.personal);
+                  Ho.storeRecords(item.key, data.personal);
+                }
+              }
+            });
+          };
+          null !== Tr.value
+            ? _subscribe(Tr.value)
+            : Tr.addListener(_subscribe);
+        }
         getRecords(e) {
           let t = null;
           try {
@@ -16169,9 +16277,33 @@
         onNewLeaderboard(e) {
           Ho.set("global", e);
         }
-        onPartialLeaderboard(e) {}
+        onPartialLeaderboard(e) {
+          /**
+           * Server sent a partial leaderboard update (e.g. the player's own rank
+           * changed without a full board refresh). Update the relevant state entry
+           * so React components re-render with the latest position.
+           */
+          if (!e || !e.key) return;
+          let item = Fo.find((f) => f.key === e.key);
+          if (item && item.state && e.entries !== undefined) {
+            item.state.set("global", e.entries);
+          }
+        }
         onNewRecord(e) {
-          console.warn("Got a new record!");
+          /**
+           * Server acknowledged a new personal best. Store it locally and trigger
+           * the record-break UI sequence so the player gets visual feedback.
+           */
+          if (!e) return;
+          let item = Fo.find((f) => f.key === e.key);
+          if (item && item.state) {
+            if (e.personal !== undefined) {
+              item.state.set("personal", e.personal);
+              Ho.storeRecords(e.key, e.personal);
+            }
+            /* Trigger the same record-break animation that the local check uses */
+            item.state.onChanged("newRecord", e);
+          }
         }
         submitRecord(e, t, i, s, a = "Anonymous") {
           Tr.value &&
@@ -16184,7 +16316,13 @@
             });
         }
         updateView(e) {
+          /**
+           * Called when Ho.view changes (topography or vehicle type switched).
+           * Reset fastest-mile so a new clean attempt starts, and reset the
+           * session-scoped records since leaderboard context has changed.
+           */
           this.resetFastestMile();
+          this.resetSessionRecords && this.resetSessionRecords();
         }
         pause() {
           this.paused = !0;
@@ -16197,8 +16335,28 @@
         init() {
           Ho.updateView(),
             this.resetFastestMile(),
+            this.resetSessionRecords(),
             (this.paused = !0),
             (this.hasInit = !1);
+        }
+        /**
+         * Resets the three session-scoped record trackers that start fresh every
+         * time a new scene is loaded: fastestFirstFive, furthestJourney, and
+         * furthestOnRoad. Called from init() and whenever the scene config changes.
+         */
+        resetSessionRecords() {
+          _firstFiveState.live.value = 0;
+          _firstFiveState.live.progress = 0;
+          _firstFiveState.live.active = Ke.vehicleIndex < _firstFiveState.endNode;
+          _firstFiveState.onChanged("live", _firstFiveState.live);
+
+          _furthestJourneyState.live.startNode = Ke.vehicleIndex;
+          _furthestJourneyState.live.currentMeters = 0;
+          _furthestJourneyState.live.onRoad = true;
+          _furthestJourneyState.onChanged("live", _furthestJourneyState.live);
+
+          _furthestOnRoadState.live.totalMeters = 0;
+          _furthestOnRoadState.onChanged("live", _furthestOnRoadState.live);
         }
         resetFastestMile() {
           Wo.set("liveInterval", {
@@ -16210,10 +16368,64 @@
         }
         nodeDidChange() {
           dr.saveProgress(Ke.vehicleIndex);
+          /* ── furthestOnRoad: cumulative on-road metres this session ── */
+          if (z.onRoad) {
+            let _onRoadMeters = 10 * (Ke.vehicleIndex - Ke.initIndex + dr.accumulatedProgress);
+            _furthestOnRoadState.live.totalMeters = _onRoadMeters;
+            _furthestOnRoadState.onChanged("live", _furthestOnRoadState.live);
+            if (_onRoadMeters > (_furthestOnRoadState.meters || -1)) {
+              _furthestOnRoadState.set("meters", _onRoadMeters);
+              if (this.checkRecordBreak(_onRoadMeters, _furthestOnRoadState)) {
+                Ho.storeRecords(_furthestOnRoadState.key, _furthestOnRoadState.personal);
+                this.submitRecord(Ho.view.topography, Ho.view.vehicle, _furthestOnRoadState.key, _onRoadMeters);
+              }
+            }
+          }
+          /* ── furthestJourney: longest continuous on-road stretch ── */
+          if (z.onRoad) {
+            let _journeyMeters = 10 * (Ke.vehicleIndex - _furthestJourneyState.live.startNode);
+            _furthestJourneyState.live.currentMeters = _journeyMeters;
+            _furthestJourneyState.onChanged("live", _furthestJourneyState.live);
+            if (_journeyMeters > (_furthestJourneyState.meters || -1)) {
+              _furthestJourneyState.set("meters", _journeyMeters);
+              if (this.checkRecordBreak(_journeyMeters, _furthestJourneyState)) {
+                Ho.storeRecords(_furthestJourneyState.key, _furthestJourneyState.personal);
+                this.submitRecord(Ho.view.topography, Ho.view.vehicle, _furthestJourneyState.key, _journeyMeters);
+              }
+            }
+          } else {
+            /* Left the road — reset the continuous-journey tracker */
+            _furthestJourneyState.live.startNode = Ke.vehicleIndex;
+            _furthestJourneyState.live.currentMeters = 0;
+            _furthestJourneyState.onChanged("live", _furthestJourneyState.live);
+          }
+        }
+        updateFirstFive(e) {
+          /**
+           * Tracks the fastest time to cover the first 800 nodes from the start
+           * of a session (≈5 miles). Once the end-node is reached the tracker
+           * freezes and the best time is persisted.
+           */
+          if (!_firstFiveState.live.active) return;
+          let _progress = Ke.vehicleIndex / _firstFiveState.endNode;
+          _firstFiveState.live.value += e;
+          _firstFiveState.live.progress = Math.min(1, _progress);
+          _firstFiveState.onChanged("live", _firstFiveState.live);
+          if (Ke.vehicleIndex >= _firstFiveState.endNode) {
+            _firstFiveState.live.active = false;
+            let _t = _firstFiveState.live.value;
+            if (this.checkRecordBreak(_t, _firstFiveState)) {
+              _firstFiveState.onChanged("personal", _firstFiveState.personal);
+              Ho.storeRecords(_firstFiveState.key, _firstFiveState.personal);
+              this.submitRecord(Ho.view.topography, Ho.view.vehicle, _firstFiveState.key, _t);
+            }
+          }
         }
         update(e) {
           this.paused ||
-            (this.updateFastestMile(e), (this.seenIndex = Ke.vehicleIndex));
+            (this.updateFastestMile(e),
+            this.updateFirstFive(e),
+            (this.seenIndex = Ke.vehicleIndex));
         }
         checkRecordBreak(e, t, i) {
           return (
